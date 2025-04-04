@@ -51,10 +51,9 @@ def generate_summary(df):
     return summary
 
 def generate_ai_insight(summary):
-    prompt = f"""
-You are an experienced business analyst. Based on the following sales statistics and chart insights, generate a detailed business intelligence report.
+    prompt = f"""You are an expert business analyst. You must reason about the data, not just summarize it.
 
-Your response MUST include the following markdown sections **with actual insights**:
+Based on the following sales summary, generate a structured markdown report that includes:
 1. **Sales Trends** – summarize key patterns in sales data
 2. **Anomalies** – identify unusual sales or outliers
 3. **Observations** – provide general analysis of what the data suggests
@@ -63,18 +62,12 @@ Your response MUST include the following markdown sections **with actual insight
 Facts:
 {summary}
 
-Charts available:
+Include Charts:
 - Sales by Product
 - Product Sales by Region
 - Sales Distribution per Product (Box Plot)
 
-Example:
-- Sales Trends: Sales increased for Classic Cars and Planes.
-- Anomalies: One transaction over $20,000 was recorded for Planes in Germany.
-- Observations: Sales are consistent across all products except Ships.
-- Recommendations: Focus marketing efforts on Planes in West region.
-
-Write the full response.
+Be specific and insightful in your response. Use bullet points inside each section if needed.
 """
     result = summarizer(prompt, max_new_tokens=512, do_sample=True, temperature=0.7)[0]["generated_text"]
     return result.strip()
