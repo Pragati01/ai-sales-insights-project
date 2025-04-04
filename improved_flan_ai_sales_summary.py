@@ -10,6 +10,8 @@ from transformers import pipeline
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email import encoders
 
 # Load model
 summarizer = pipeline("text2text-generation", model="google/flan-t5-xl")
@@ -66,7 +68,22 @@ def compute_pandas_insights(df):
     summary.append(f"- Recommendation: {recommendation}")
 
     return "\n".join(summary)
-    
+
+def generate_ai_narrative(df, summary):
+    df_sample = df[['product', 'region', 'country', 'quantity', 'unit_price', 'total_sales']].head(20)
+    markdown = df_sample.to_markdown(index=False)
+
+    prompt = f"""
+You are a business analyst. Based on the following summary, write a short, professional narrative summary describing the sales performance, trends, anomalies, and recommendations.
+Include top 3 performing countries and products, bottom 3 performing countries and products, max, min, avg sale values. 
+
+Sales data Summary:
+{summary}
+"""
+
+    result = summarizer(prompt, max_new_tokens=300, do_sample=True, temperature=0.7)[0]["generated_text"]
+    return result.strip()
+
 def generate_charts(df):
     os.makedirs("charts", exist_ok=True)
 
@@ -90,33 +107,24 @@ def generate_charts(df):
     plt.savefig("charts/sales_boxplot.png")
     plt.close()
 
-def generate_ai_narrative(df,summary):
-    df_sample = df[['product', 'region', 'country', 'quantity', 'unit_price', 'total_sales']].head(20)
-    markdown = df_sample.to_markdown(index=False)
-
-    prompt = f"""
-You are a business analyst. Based on the following summary, write a short, professional narrative summary describing the sales performance, trends, anomalies, and recommendations.
-Include top 3 performing countries and products, bottom 3 performing countries and products, max,min, avg sale values. 
-
-Sales data Summary:
-{summary}
-"""
-
-    result = summarizer(prompt, max_new_tokens=300, do_sample=True, temperature=0.7)[0]["generated_text"]
-    return result.strip()
-
-def send_email(subject, body):
-  # Email setup
+def send_email(subject, body, attachments=[]):
     sender_email = os.environ["EMAIL_USERNAME"]
     app_password = os.environ["EMAIL_APP_PASSWORD"]
     receiver_email = os.environ["EMAIL_RECEIVER"]
-    
 
     message = MIMEMultipart()
     message["From"] = sender_email
     message["To"] = receiver_email
     message["Subject"] = subject
     message.attach(MIMEText(body, "plain"))
+
+    for attachment_path in attachments:
+        with open(attachment_path, "rb") as f:
+            part = MIMEBase("application", "octet-stream")
+            part.set_payload(f.read())
+        encoders.encode_base64(part)
+        part.add_header("Content-Disposition", f"attachment; filename={os.path.basename(attachment_path)}")
+        message.attach(part)
 
     try:
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
@@ -132,7 +140,7 @@ if __name__ == "__main__":
     max_date = df["date"].max().strftime("%b %d, %Y")
 
     pandas_summary = compute_pandas_insights(df)
-    ai_narrative = generate_ai_narrative(df,pandas_summary)
+    ai_narrative = generate_ai_narrative(df, pandas_summary)
     generate_charts(df)
 
     subject = f"📈 AI Sales Report – {max_date}"
@@ -141,9 +149,12 @@ if __name__ == "__main__":
     print(subject)
     print(full_report)
 
-    send_email(subject=subject,
-               body=full_report,attachments=[
-                "charts/sales_by_product.png",
-                "charts/sales_by_product_region.png",
-                "charts/sales_boxplot.png"
-        ])
+    send_email(
+        subject=subject,
+        body=full_report,
+        attachments=[
+            "charts/sales_by_product.png",
+            "charts/sales_by_product_region.png",
+            "charts/sales_boxplot.png"
+        ]
+    )
