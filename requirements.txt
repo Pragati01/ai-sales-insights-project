@@ -2,3 +2,4 @@ transformers
 pandas
 matplotlib
 seaborn
+tabulate
