@@ -87,9 +87,10 @@ def generate_chart(df):
     plt.savefig("charts/sales_by_product.png")
 
 def send_email(subject, body, attachment_path):
-    sender_email = os.environ["pragatikhedkar15@gmail.com"]
-    app_password = os.environ["jlkrvlrlthmhuikw"]
-    receiver_email = os.environ["pragatikhedkar15@gmail.com"]
+    
+    sender_email = os.environ["EMAIL_USERNAME"]
+    app_password = os.environ["EMAIL_APP_PASSWORD"]
+    receiver_email = os.environ["EMAIL_RECEIVER"]
 
     message = MIMEMultipart()
     message["From"] = sender_email
