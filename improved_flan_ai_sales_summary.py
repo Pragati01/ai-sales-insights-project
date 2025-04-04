@@ -4,9 +4,13 @@ import random
 import datetime
 import os
 import matplotlib.pyplot as plt
-import seaborn as sns
 from statistics import mode
 from transformers import pipeline
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email import encoders
 
 # Load model
 summarizer = pipeline("text2text-generation", model="google/flan-t5-xl")
@@ -51,18 +55,24 @@ def generate_ai_insight(summary):
 You are an experienced business analyst. Based on the following sales statistics and chart insights, generate a detailed business intelligence report.
 
 Your response MUST include the following markdown sections **with actual insights**:
-1. **Sales Trends**
-2. **Anomalies**
-3. **Observations**
-4. **Recommendations**
+1. **Sales Trends** – summarize key patterns in sales data
+2. **Anomalies** – identify unusual sales or outliers
+3. **Observations** – provide general analysis of what the data suggests
+4. **Recommendations** – what actions should be taken next?
 
 Facts:
-{summary}
+{fact_block}
 
 Charts available:
 - Sales by Product
 - Product Sales by Region
 - Sales Distribution per Product (Box Plot)
+
+Example:
+- Sales Trends: Sales increased for Classic Cars and Planes.
+- Anomalies: One transaction over $20,000 was recorded for Planes in Germany.
+- Observations: Sales are consistent across all products except Ships.
+- Recommendations: Focus marketing efforts on Planes in West region.
 
 Write the full response.
 """
@@ -76,11 +86,44 @@ def generate_chart(df):
     plt.tight_layout()
     plt.savefig("charts/sales_by_product.png")
 
+def send_email(subject, body, attachment_path):
+    sender_email = os.environ["pragatikhedkar15@gmail.com"]
+    app_password = os.environ["jlkrvlrlthmhuikw"]
+    receiver_email = os.environ["pragatikhedkar15@gmail.com"]
+
+    message = MIMEMultipart()
+    message["From"] = sender_email
+    message["To"] = receiver_email
+    message["Subject"] = subject
+    message.attach(MIMEText(body, "plain"))
+
+    # Attach the chart
+    with open(attachment_path, "rb") as f:
+        part = MIMEBase("application", "octet-stream")
+        part.set_payload(f.read())
+    encoders.encode_base64(part)
+    part.add_header("Content-Disposition", f"attachment; filename={os.path.basename(attachment_path)}")
+    message.attach(part)
+
+    try:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(sender_email, app_password)
+            server.sendmail(sender_email, receiver_email, message.as_string())
+        print("✅ Email sent successfully.")
+    except Exception as e:
+        print(f"❌ Failed to send email: {e}")
+
 if __name__ == "__main__":
     df = simulate_data()
     summary = generate_summary(df)
     insight = generate_ai_insight(summary)
     generate_chart(df)
 
-    print("📊 Summary:\n", summary)
-    print("\n🤖 AI Insight:\n", insight)
+    full_text = f"{summary}\n\n---\n\n{insight}"
+    print(full_text)
+
+    send_email(
+        subject="📈 Daily AI Sales Summary",
+        body=full_text,
+        attachment_path="charts/sales_by_product.png"
+    )
