@@ -110,7 +110,7 @@ if __name__ == "__main__":
     max_date = df["date"].max().strftime("%b %d, %Y")
 
     pandas_summary = compute_pandas_insights(df)
-    ai_narrative = generate_ai_narrative(df,summary)
+    ai_narrative = generate_ai_narrative(df,pandas_summary)
 
     subject = f"📈 AI Sales Report – {max_date}"
     full_report = f"📊 Python-Generated Insights:\n{pandas_summary}\n\n🤖 AI-Powered Narrative:\n{ai_narrative}"
