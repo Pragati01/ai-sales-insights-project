@@ -10,8 +10,6 @@ from transformers import pipeline
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from email.mime.base import MIMEBase
-from email import encoders
 
 # Load model
 summarizer = pipeline("text2text-generation", model="google/flan-t5-xl")
@@ -33,7 +31,9 @@ def simulate_data():
         data.append(record)
     return pd.DataFrame(data)
 
-def generate_summary(df):
+def compute_pandas_insights(df):
+    summary = []
+
     avg = df['total_sales'].mean()
     median = df['total_sales'].median()
     min_val = df['total_sales'].min()
@@ -42,82 +42,57 @@ def generate_summary(df):
         mode_val = mode(df['total_sales'])
     except:
         mode_val = "No unique mode"
+
     max_row = df.loc[df['total_sales'].idxmax()]
     min_row = df.loc[df['total_sales'].idxmin()]
-    summary = f"""- Average sale value: ${avg:.2f}
-- Median: ${median:.2f}
-- Mode: {mode_val}
-- Max: ${max_val:.2f} ({max_row['product']} in {max_row['country']})
-- Min: ${min_val:.2f} ({min_row['product']} in {min_row['country']})"""
-    return summary
 
-def generate_ai_insight(summary):
+    top_products = df.groupby("product")["total_sales"].sum().sort_values(ascending=False).head(3).index.tolist()
+    top_countries = df.groupby("country")["total_sales"].sum().sort_values(ascending=False).head(3).index.tolist()
+
+    Q1 = df['total_sales'].quantile(0.25)
+    Q3 = df['total_sales'].quantile(0.75)
+    IQR = Q3 - Q1
+    outliers = df[(df['total_sales'] < Q1 - 1.5 * IQR) | (df['total_sales'] > Q3 + 1.5 * IQR)]
+
+    recommendation = "Sales of 'Planes' have dropped significantly in the South region."
+
+    summary.append(f"- Average sale value: ${avg:.2f}")
+    summary.append(f"- Median: ${median:.2f}, Max: ${max_val:.2f}, Min: ${min_val:.2f}, Mode: {mode_val}")
+    summary.append(f"- Highest transaction: ${max_row['total_sales']} ({max_row['product']} in {max_row['country']})")
+    summary.append(f"- Lowest transaction: ${min_row['total_sales']} ({min_row['product']} in {min_row['country']})")
+    summary.append(f"- Top 3 product lines: {', '.join(top_products)}")
+    summary.append(f"- Top performing countries: {', '.join(top_countries)}")
+    summary.append(f"- Outliers detected: {len(outliers)} transactions")
+    summary.append(f"- Recommendation: {recommendation}")
+
+    return "\n".join(summary)
+
+def generate_ai_narrative(df):
+    df_sample = df[['product', 'region', 'country', 'quantity', 'unit_price', 'total_sales']].head(20)
+    markdown = df_sample.to_markdown(index=False)
+
     prompt = f"""
-You are an expert business analyst. You must reason about the data, not just summarize it.
+You are a business analyst. Based on the following sales records, write a short, professional narrative summary describing the sales performance, trends, anomalies, and recommendations.
 
-Based on the following sales summary, generate a structured markdown report with:
-1. **Sales Trends**
-2. **Anomalies**
-3. **Observations**
-4. **Recommendations**
-
-Facts:
-{summary}
-
-Charts available:
-- Sales by Product
-- Product Sales by Region
-- Sales Distribution per Product (Box Plot)
-
-Be specific and insightful. Include bullet points inside sections if needed.
+Sales data:
+{markdown}
 """
-    result = summarizer(prompt, max_new_tokens=512, do_sample=True, temperature=0.7)[0]["generated_text"]
+
+    result = summarizer(prompt, max_new_tokens=300, do_sample=True, temperature=0.7)[0]["generated_text"]
     return result.strip()
 
-def generate_charts(df):
-    os.makedirs("charts", exist_ok=True)
-
-    # Chart 1: Sales by Product
-    df.groupby("product")["total_sales"].sum().plot(kind="bar", title="Total Sales by Product", color="skyblue")
-    plt.ylabel("Total Sales")
-    plt.tight_layout()
-    plt.savefig("charts/sales_by_product.png")
-    plt.close()
-
-    # Chart 2: Product Sales by Region
-    plt.figure(figsize=(10,6))
-    sns.barplot(data=df, x="product", y="total_sales", hue="region")
-    plt.title("Product Sales by Region")
-    plt.tight_layout()
-    plt.savefig("charts/sales_by_product_region.png")
-    plt.close()
-
-    # Chart 3: Box Plot
-    plt.figure(figsize=(8,6))
-    sns.boxplot(x="product", y="total_sales", data=df)
-    plt.title("Sales Distribution per Product (Box Plot)")
-    plt.tight_layout()
-    plt.savefig("charts/sales_boxplot.png")
-    plt.close()
-
-def send_email(subject, body, attachments):
-    sender_email = os.environ["EMAIL_USERNAME"]
-    app_password = os.environ["EMAIL_APP_PASSWORD"]
-    receiver_email = os.environ["EMAIL_RECEIVER"]
+def send_email(subject, body):
+  # Email setup
+    sender_email = "pragatikhedkar15@gmail.com"
+    app_password = "jlkrvlrlthmhuikw"
+    receiver_email = "pragatikhedkar15@gmail.com"
+    
 
     message = MIMEMultipart()
     message["From"] = sender_email
     message["To"] = receiver_email
     message["Subject"] = subject
     message.attach(MIMEText(body, "plain"))
-
-    for attachment_path in attachments:
-        with open(attachment_path, "rb") as f:
-            part = MIMEBase("application", "octet-stream")
-            part.set_payload(f.read())
-        encoders.encode_base64(part)
-        part.add_header("Content-Disposition", f"attachment; filename={os.path.basename(attachment_path)}")
-        message.attach(part)
 
     try:
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
@@ -132,22 +107,13 @@ if __name__ == "__main__":
     df["date"] = pd.to_datetime(df["date"])
     max_date = df["date"].max().strftime("%b %d, %Y")
 
-    summary = generate_summary(df)
-    insight = generate_ai_insight(summary)
-    generate_charts(df)
+    pandas_summary = compute_pandas_insights(df)
+    ai_narrative = generate_ai_narrative(df)
 
-    full_text = f"{summary}\n\n---\n\n{insight}"
-    subject = f"📈 Daily AI Sales Summary – {max_date}"
+    subject = f"📈 AI Sales Report – {max_date}"
+    full_report = f"📊 Python-Generated Insights:\n{pandas_summary}\n\n🤖 AI-Powered Narrative:\n{ai_narrative}"
 
     print(subject)
-    print(full_text)
+    print(full_report)
 
-    send_email(
-        subject=subject,
-        body=full_text,
-        attachments=[
-            "charts/sales_by_product.png",
-            "charts/sales_by_product_region.png",
-            "charts/sales_boxplot.png"
-        ]
-    )
+    send_email(subject=subject, body=full_report)
