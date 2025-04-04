@@ -4,6 +4,7 @@ import random
 import datetime
 import os
 import matplotlib.pyplot as plt
+import seaborn as sns
 from statistics import mode
 from transformers import pipeline
 import smtplib
@@ -51,36 +52,55 @@ def generate_summary(df):
     return summary
 
 def generate_ai_insight(summary):
-    prompt = f"""You are an expert business analyst. You must reason about the data, not just summarize it.
+    prompt = f"""
+You are an expert business analyst. You must reason about the data, not just summarize it.
 
-Based on the following sales summary, generate a structured markdown report that includes:
-1. **Sales Trends** – summarize key patterns in sales data
-2. **Anomalies** – identify unusual sales or outliers
-3. **Observations** – provide general analysis of what the data suggests
-4. **Recommendations** – what actions should be taken next?
+Based on the following sales summary, generate a structured markdown report with:
+1. **Sales Trends**
+2. **Anomalies**
+3. **Observations**
+4. **Recommendations**
 
 Facts:
 {summary}
 
-Include Charts:
+Charts available:
 - Sales by Product
 - Product Sales by Region
 - Sales Distribution per Product (Box Plot)
 
-Be specific and insightful in your response. Use bullet points inside each section if needed.
+Be specific and insightful. Include bullet points inside sections if needed.
 """
     result = summarizer(prompt, max_new_tokens=512, do_sample=True, temperature=0.7)[0]["generated_text"]
     return result.strip()
 
-def generate_chart(df):
+def generate_charts(df):
     os.makedirs("charts", exist_ok=True)
+
+    # Chart 1: Sales by Product
     df.groupby("product")["total_sales"].sum().plot(kind="bar", title="Total Sales by Product", color="skyblue")
     plt.ylabel("Total Sales")
     plt.tight_layout()
     plt.savefig("charts/sales_by_product.png")
+    plt.close()
 
-def send_email(subject, body, attachment_path):
-    
+    # Chart 2: Product Sales by Region
+    plt.figure(figsize=(10,6))
+    sns.barplot(data=df, x="product", y="total_sales", hue="region")
+    plt.title("Product Sales by Region")
+    plt.tight_layout()
+    plt.savefig("charts/sales_by_product_region.png")
+    plt.close()
+
+    # Chart 3: Box Plot
+    plt.figure(figsize=(8,6))
+    sns.boxplot(x="product", y="total_sales", data=df)
+    plt.title("Sales Distribution per Product (Box Plot)")
+    plt.tight_layout()
+    plt.savefig("charts/sales_boxplot.png")
+    plt.close()
+
+def send_email(subject, body, attachments):
     sender_email = os.environ["EMAIL_USERNAME"]
     app_password = os.environ["EMAIL_APP_PASSWORD"]
     receiver_email = os.environ["EMAIL_RECEIVER"]
@@ -91,13 +111,13 @@ def send_email(subject, body, attachment_path):
     message["Subject"] = subject
     message.attach(MIMEText(body, "plain"))
 
-    # Attach the chart
-    with open(attachment_path, "rb") as f:
-        part = MIMEBase("application", "octet-stream")
-        part.set_payload(f.read())
-    encoders.encode_base64(part)
-    part.add_header("Content-Disposition", f"attachment; filename={os.path.basename(attachment_path)}")
-    message.attach(part)
+    for attachment_path in attachments:
+        with open(attachment_path, "rb") as f:
+            part = MIMEBase("application", "octet-stream")
+            part.set_payload(f.read())
+        encoders.encode_base64(part)
+        part.add_header("Content-Disposition", f"attachment; filename={os.path.basename(attachment_path)}")
+        message.attach(part)
 
     try:
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
@@ -109,15 +129,25 @@ def send_email(subject, body, attachment_path):
 
 if __name__ == "__main__":
     df = simulate_data()
+    df["date"] = pd.to_datetime(df["date"])
+    max_date = df["date"].max().strftime("%b %d, %Y")
+
     summary = generate_summary(df)
     insight = generate_ai_insight(summary)
-    generate_chart(df)
+    generate_charts(df)
 
     full_text = f"{summary}\n\n---\n\n{insight}"
+    subject = f"📈 Daily AI Sales Summary – {max_date}"
+
+    print(subject)
     print(full_text)
 
     send_email(
-        subject="📈 Daily AI Sales Summary",
+        subject=subject,
         body=full_text,
-        attachment_path="charts/sales_by_product.png"
+        attachments=[
+            "charts/sales_by_product.png",
+            "charts/sales_by_product_region.png",
+            "charts/sales_boxplot.png"
+        ]
     )
