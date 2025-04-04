@@ -61,7 +61,7 @@ Your response MUST include the following markdown sections **with actual insight
 4. **Recommendations** – what actions should be taken next?
 
 Facts:
-{fact_block}
+{summary}
 
 Charts available:
 - Sales by Product
