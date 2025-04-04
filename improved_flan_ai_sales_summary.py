@@ -72,11 +72,10 @@ def generate_ai_narrative(df,summary):
     markdown = df_sample.to_markdown(index=False)
 
     prompt = f"""
-You are a senior business analyst. Based on the following bullet-point sales summary, write a short, executive-level insight story.
+You are a business analyst. Based on the following summary, write a short, professional narrative summary describing the sales performance, trends, anomalies, and recommendations.
+Include top 3 performing countries and products, bottom 3 performing countries and products, max,min, avg sale values. 
 
-Do not repeat the bullet points. Instead, rewrite them into a fluid, natural narrative with real business language. Keep it concise and engaging.
-
-Sales summary:
+Sales data Summary:
 {summary}
 """
 
