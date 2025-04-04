@@ -83,9 +83,9 @@ Sales data:
 
 def send_email(subject, body):
   # Email setup
-    sender_email = "pragatikhedkar15@gmail.com"
-    app_password = "jlkrvlrlthmhuikw"
-    receiver_email = "pragatikhedkar15@gmail.com"
+    sender_email = os.environ["EMAIL_USERNAME"]
+    app_password = os.environ["EMAIL_APP_PASSWORD"]
+    receiver_email = os.environ["EMAIL_RECEIVER"]
     
 
     message = MIMEMultipart()
