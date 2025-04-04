@@ -26,7 +26,7 @@ jobs:
         pip install torch --index-url https://download.pytorch.org/whl/cpu
 
     - name: Run script
-      run: python improved_flan_ai_sales_summary_email.py
+      run: python improved_flan_ai_sales_summary.py
       env:
         EMAIL_USERNAME: ${{ secrets.EMAIL_USERNAME }}
         EMAIL_APP_PASSWORD: ${{ secrets.EMAIL_APP_PASSWORD }}
