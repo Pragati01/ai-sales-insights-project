@@ -66,6 +66,29 @@ def compute_pandas_insights(df):
     summary.append(f"- Recommendation: {recommendation}")
 
     return "\n".join(summary)
+    
+def generate_charts(df):
+    os.makedirs("charts", exist_ok=True)
+
+    df.groupby("product")["total_sales"].sum().plot(kind="bar", title="Total Sales by Product", color="skyblue")
+    plt.ylabel("Total Sales")
+    plt.tight_layout()
+    plt.savefig("charts/sales_by_product.png")
+    plt.close()
+
+    plt.figure(figsize=(10,6))
+    sns.barplot(data=df, x="product", y="total_sales", hue="region")
+    plt.title("Product Sales by Region")
+    plt.tight_layout()
+    plt.savefig("charts/sales_by_product_region.png")
+    plt.close()
+
+    plt.figure(figsize=(8,6))
+    sns.boxplot(x="product", y="total_sales", data=df)
+    plt.title("Sales Distribution per Product (Box Plot)")
+    plt.tight_layout()
+    plt.savefig("charts/sales_boxplot.png")
+    plt.close()
 
 def generate_ai_narrative(df,summary):
     df_sample = df[['product', 'region', 'country', 'quantity', 'unit_price', 'total_sales']].head(20)
@@ -110,6 +133,7 @@ if __name__ == "__main__":
 
     pandas_summary = compute_pandas_insights(df)
     ai_narrative = generate_ai_narrative(df,pandas_summary)
+    generate_charts(df)
 
     subject = f"📈 AI Sales Report – {max_date}"
     full_report = f"📊 Python-Generated Insights:\n{pandas_summary}\n\n🤖 AI-Powered Narrative:\n{ai_narrative}"
@@ -117,4 +141,9 @@ if __name__ == "__main__":
     print(subject)
     print(full_report)
 
-    send_email(subject=subject, body=full_report)
+    send_email(subject=subject,
+               body=full_report,attachments=[
+                "charts/sales_by_product.png",
+                "charts/sales_by_product_region.png",
+                "charts/sales_boxplot.png"
+        ])
