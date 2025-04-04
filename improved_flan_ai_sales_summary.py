@@ -67,15 +67,17 @@ def compute_pandas_insights(df):
 
     return "\n".join(summary)
 
-def generate_ai_narrative(df):
+def generate_ai_narrative(df,summary):
     df_sample = df[['product', 'region', 'country', 'quantity', 'unit_price', 'total_sales']].head(20)
     markdown = df_sample.to_markdown(index=False)
 
     prompt = f"""
-You are a business analyst. Based on the following sales records, write a short, professional narrative summary describing the sales performance, trends, anomalies, and recommendations.
+You are a senior business analyst. Based on the following bullet-point sales summary, write a short, executive-level insight story.
 
-Sales data:
-{markdown}
+Do not repeat the bullet points. Instead, rewrite them into a fluid, natural narrative with real business language. Keep it concise and engaging.
+
+Sales summary:
+{summary}
 """
 
     result = summarizer(prompt, max_new_tokens=300, do_sample=True, temperature=0.7)[0]["generated_text"]
@@ -108,7 +110,7 @@ if __name__ == "__main__":
     max_date = df["date"].max().strftime("%b %d, %Y")
 
     pandas_summary = compute_pandas_insights(df)
-    ai_narrative = generate_ai_narrative(df)
+    ai_narrative = generate_ai_narrative(df,summary)
 
     subject = f"📈 AI Sales Report – {max_date}"
     full_report = f"📊 Python-Generated Insights:\n{pandas_summary}\n\n🤖 AI-Powered Narrative:\n{ai_narrative}"
