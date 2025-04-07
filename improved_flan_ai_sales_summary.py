@@ -75,7 +75,7 @@ def generate_ai_narrative(df, summary):
 
     prompt = f"""
 You are a business analyst. Based on the following summary, write a short, professional narrative summary describing the sales performance, trends, anomalies, and recommendations.
-Include top 3 performing countries and products, bottom 3 performing countries and products, max, min, avg sale values. 
+Include top 3 performing countries and products, bottom 3 performing countries and products, max, min, avg sale values. Do not repeat the points.
 
 Sales data Summary:
 {summary}
