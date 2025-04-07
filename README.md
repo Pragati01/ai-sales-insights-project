@@ -41,20 +41,8 @@ pip install torch --index-url https://download.pytorch.org/whl/cpu
 
 ## 🧠 Example Output (in email)
 
-```
-📊 Python-Generated Insights:
-- Average sale value: $8318.37
-- Median: $7304.39, Max: $19772.30, Min: $566.45, Mode: 5059.7
-- Highest transaction: $19772.3 (Motorcycles in France)
-- Lowest transaction: $566.45 (Motorcycles in Germany)
-- Top 3 product lines: Planes, Classic Cars, Vintage Cars
-- Top performing countries: USA, Germany, Spain
-- Outliers detected: 0 transactions
-- Recommendation: Sales of 'Planes' have dropped significantly in the South region.
+<img width="880" alt="image" src="https://github.com/user-attachments/assets/4a1caf3f-4736-4bfd-bfe6-f688abb4852f" />
 
-🤖 AI-Powered Narrative:
-The top 3 performing countries and products are: Germany ($60,000.68) - Spain ($24,674.95) - France ($4,342) The top performing products are: Ships in Spain - Cars in France
-```
 
 ---
 
